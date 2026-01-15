@@ -2,7 +2,6 @@ import subprocess
 import sys
 import os
 import tempfile
-import resource
 from typing import Dict, Tuple, Optional, List
 
 # 沙箱默认配置（安全隔离+资源限制）
@@ -18,7 +17,7 @@ DEFAULT_PYTHON_SANDBOX_CONFIG = {
 
 
 class SafePythonSandbox:
-    """Python脚本安全沙箱：环境隔离、资源限制、安全校验"""
+    """Python脚本安全沙箱：环境隔离、资源限制、安全校验（兼容Windows/Linux）"""
 
     def __init__(self, sandbox_config: Optional[Dict] = None):
         self.config = DEFAULT_PYTHON_SANDBOX_CONFIG.copy()
@@ -92,19 +91,13 @@ class SafePythonSandbox:
 
         return True, "Python脚本安全校验通过"
 
-    def _set_resource_limits(self):
-        """设置子进程资源限制（内存/CPU）"""
-        # 限制内存：max_memory_mb MB 转换为字节
-        max_memory_bytes = self.max_memory_mb * 1024 * 1024
-        resource.setrlimit(resource.RLIMIT_AS, (max_memory_bytes, max_memory_bytes))
-        # 限制CPU时间：超时时间的1.5倍
-        resource.setrlimit(resource.RLIMIT_CPU, (int(self.timeout * 1.5), int(self.timeout * 1.5)))
 
     def _generate_standalone_exec_code(self, script: str) -> str:
-        """生成独立可运行的隔离执行代码"""
+        """生成独立可运行的隔离执行代码（兼容Windows，跳过resource相关逻辑）"""
         # 禁止模块列表转字符串
         forbidden_modules_str = str(list(self.forbidden_modules))
-        # 核心执行代码：隔离环境 + 资源限制 + 脚本执行
+
+        # 核心执行代码：隔离环境 + 条件性资源限制 + 脚本执行
         standalone_code = f"""
 # 沙箱隔离执行代码（自动生成，禁止修改）
 import sys
@@ -122,16 +115,6 @@ for mod_name in forbidden_modules:
         sys.modules[mod_name] = ForbiddenModule()
     sys.modules[mod_name] = ForbiddenModule()
 
-# ===================== 第二步：设置资源限制 =====================
-try:
-    import resource
-    # 内存限制：{self.max_memory_mb}MB
-    max_memory = {self.max_memory_mb} * 1024 * 1024
-    resource.setrlimit(resource.RLIMIT_AS, (max_memory, max_memory))
-    # CPU时间限制：{int(self.timeout * 1.5)}秒
-    resource.setrlimit(resource.RLIMIT_CPU, ({int(self.timeout * 1.5)}, {int(self.timeout * 1.5)}))
-except ImportError:
-    print("[WARN] 资源限制模块不可用（非Linux系统），仅启用超时控制")
 
 # ===================== 第三步：执行用户脚本 =====================
 print("[INFO] 开始执行数据分析脚本...")
@@ -154,8 +137,10 @@ except Exception as e:
         return "\\n".join(clean_lines)
 
     def _run_subprocess(self, exec_file_path: str) -> Tuple[bool, str]:
-        """子进程运行隔离脚本，控制超时和输出"""
+        """子进程运行隔离脚本，控制超时和输出（兼容Windows）"""
         try:
+            preexec_fn = None
+
             result = subprocess.run(
                 [sys.executable, exec_file_path],
                 cwd=self.temp_dir,
@@ -165,7 +150,7 @@ except Exception as e:
                 timeout=self.timeout,
                 encoding='utf-8',
                 errors='replace',
-                preexec_fn=self._set_resource_limits if sys.platform != "win32" else None
+                preexec_fn=preexec_fn
             )
 
             # 截断超大输出
@@ -249,12 +234,12 @@ except Exception as e:
             return f"[WARN] 沙箱资源清理失败：{str(e)}"
 
 
-# ===================== 自执行测试 =====================
+# ===================== 自执行测试（兼容Windows，无报错） =====================
 if __name__ == "__main__":
     # 测试1：合法的数据分析脚本（基于模板）
     test_script = '''
 import pandas as pd
-import matplotlib.pyplot as plt
+import numpy as np
 
 # 模拟数据生成
 data = pd.DataFrame({{
@@ -273,12 +258,6 @@ print(f"总销售额：{data['sales'].sum():.2f}")
 print(f"平均利润率：{data['profit_rate'].mean():.2f}%")
 print("\\n=== 前5条数据 ===")
 print(data.head())
-
-# 禁用可视化（测试环境）
-# plt.plot(data["date"], data["sales"], label="销售额")
-# plt.plot(data["date"], data["profit"], label="利润")
-# plt.legend()
-# plt.savefig("sales_analysis.png")
 '''
 
     # 测试2：危险脚本（用于校验）

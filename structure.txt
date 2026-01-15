@@ -1,0 +1,88 @@
+ai_report_agent/  # 项目根目录
+├── README.md          # 项目说明、快速启动、注意事项
+├── requirements.txt   # 项目依赖（pandas、elasticsearch、openpyxl、python-docx等）
+├── run.py             # 项目入口（Agent服务启动、本地调试入口）
+├── .gitignore         # 忽略不必要提交的文件（临时文件、日志、缓存等）
+├── config/            # 全局配置目录（统一管理配置，便于场景化配置维护）
+│   ├── __init__.py
+│   ├── global_config.yaml  # 全局配置（数据库、ES、MCP模块、服务端口等）
+│   ├── scenario_widetable_mapping.yaml  # 场景-宽表映射配置（核心，维护业务场景与宽表对应关系）
+│   ├── nl2sql_config.yaml  # NL2SQL配置（表结构映射、SQL模板、禁止执行的操作等）
+│   └── office_config.yaml  # Office解析配置（Excel模板路径、宏脚本模板、Word解析规则等）
+├── agent/             # 核心Agent模块（多轮对话、指令解析、任务调度核心）
+│   ├── __init__.py
+│   ├── core/          # Agent核心逻辑（基类、调度中枢）
+│   │   ├── __init__.py
+│   │   ├── base_agent.py  # Agent基类（定义通用方法：对话初始化、记忆管理、结果返回）
+│   │   └── report_agent.py  # 报表分析专属Agent（继承基类，实现金融业务场景适配）
+│   ├── dialogue/      # 多轮对话管理（上下文、意图跟踪、历史记忆）
+│   │   ├── __init__.py
+│   │   ├── context_manager.py  # 上下文管理（维护对话上下文、关联业务指令）
+│   │   └── memory_store.py     # 对话记忆（短期记忆：当前对话；长期记忆：历史业务场景结果）
+│   ├── parser/        # 业务指令解析（自然语言→结构化任务）
+│   │   ├── __init__.py
+│   │   ├── nl_parser.py  # 自然语言指令解析（提取业务场景、数据需求、操作类型）
+│   │   ├── task_structor.py  # 结构化任务生成（将解析结果转为MCP可执行的任务格式）
+│   │   └── scenario_matcher.py  # 场景匹配（基于「场景-宽表」映射，匹配对应宽表与处理规则）
+│   └── scheduler/     # 任务调度（分发任务到MCP模块、整合多模块结果）
+│       ├── __init__.py
+│       ├── task_dispatcher.py  # 任务分发（根据任务类型，调用对应MCP模块）
+│       └── result_assembler.py  # 结果整合（多模块结果汇总、格式化，适配Excel/Word输出）
+├── mcp/               # MCP模块封装（核心业务功能，规整数据流，适配业务系统）
+│   ├── __init__.py
+│   ├── base_mcp.py    # MCP基类（定义通用接口、数据流规范、异常处理）
+│   ├── nl2sql/        # NL2SQL功能（自然语言→SQL，查询金融云交易结算/成本数据）
+│   │   ├── __init__.py
+│   │   ├── sql_generator.py  # SQL生成（基于表结构与自然语言需求，生成合规SQL）
+│   │   ├── sql_executor.py   # SQL执行（安全执行SQL、返回查询结果，支持事务与权限控制）
+│   │   └── sql_verifier.py   # SQL校验（防止恶意SQL、校验语法与业务合规性）
+│   ├── es_search/     # 语义检索（ES，检索历史报表、业务文档、配置规则）
+│   │   ├── __init__.py
+│   │   ├── es_client.py  # ES客户端封装（连接、索引管理）
+│   │   └── semantic_retrieval.py  # 语义检索（关键词/自然语言检索、结果排序与过滤）
+│   ├── python_sandbox/ # Python沙箱（安全运行自定义数据分析脚本，隔离业务环境）
+│   │   ├── __init__.py
+│   │   ├── sandbox_core.py  # 沙箱核心（环境隔离、资源限制、脚本执行）
+│   │   └── script_template.py  # 脚本模板（提供数据分析通用模板，减少重复开发）
+│   ├── auto_data_analysis/  # 自动化数据分析（基于宽表，完成统计、聚合、趋势分析）
+│   │   ├── __init__.py
+│   │   ├── descriptive_analysis.py  # 描述性统计（均值、中位数、方差等）
+│   │   ├── trend_analysis.py        # 趋势分析（时间序列、增长率、环比/同比分析）
+│   │   └── anomaly_detection.py     # 异常检测（成本、结算数据异常识别，报错预警）
+│   ├── office_parser/  # Word&Excel解析（读取/写入、模板解析、数据提取）
+│   │   ├── __init__.py
+│   │   ├── excel_parser.py  # Excel解析（读取数据、解析模板、智能填空、宏关联）
+│   │   ├── word_parser.py   # Word解析（读取文档、提取表格数据、生成分析报告）
+│   │   └── office_template_manager.py  # 模板管理（维护Excel/Word模板，支持场景化模板匹配）
+│   ├── macro_auto/     # 宏脚本自动化分析（Excel宏生成、运行、结果回收）
+│   │   ├── __init__.py
+│   │   ├── macro_generator.py  # 宏脚本生成（基于业务需求，生成合规VBA宏）
+│   │   ├── macro_executor.py   # 宏执行（调用Excel COM组件，安全运行宏、返回结果）
+│   │   └── macro_template.py   # 宏模板（结算分析、成本统计等通用宏模板）
+│   └── data_completion/  # 数据补全与生成（缺失数据补全、测试数据生成、格式标准化）
+│       ├── __init__.py
+│       ├── data_imfill.py  # 数据补全（基于历史数据、业务规则，补全缺失字段）
+│       └── data_generator.py  # 数据生成（生成测试数据、模拟业务场景数据）
+├── data/              # 数据目录（存放模板、临时数据、输出结果，便于管理）
+│   ├── templates/     # 办公模板（Excel/Word模板，对应业务场景）
+│   ├── temp/          # 临时文件（沙箱运行结果、中间解析文件、缓存数据）
+│   ├── output/        # 输出结果（生成的分析报告、填充完成的Excel、宏运行结果）
+│   └── wide_tables/   # 宽表数据（存放场景对应的宽表，支持本地缓存与更新）
+├── utils/             # 通用工具类（全局复用，减少冗余代码）
+│   ├── __init__.py
+│   ├── log_utils.py   # 日志工具（统一日志格式、输出路径、级别配置）
+│   ├── file_utils.py  # 文件工具（文件读写、路径处理、格式转换、临时文件清理）
+│   ├── db_utils.py    # 数据库工具（数据库连接池、通用查询/更新方法）
+│   ├── data_utils.py  # 数据工具（数据格式标准化、类型转换、数据校验）
+│   └── exception_utils.py  # 异常工具（自定义异常类、全局异常捕获与处理）
+├── deploy/            # 部署目录（支撑业务系统落地，便于部署与运维）
+│   ├── docker/        # Docker部署（Dockerfile、docker-compose.yml）
+│   ├── shell/         # 启动/停止脚本（shell脚本、bat脚本，适配生产环境）
+│   └── api/           # API封装（FastAPI/Flask，提供接口给业务系统调用）
+│       ├── __init__.py
+│       └── agent_api.py  # Agent接口（提供对话、任务提交、结果查询等接口）
+└── tests/             # 测试目录（单元测试、集成测试，保障代码质量）
+    ├── __init__.py
+    ├── test_agent/    # Agent模块测试（对话解析、场景匹配、任务调度）
+    ├── test_mcp/      # MCP模块测试（各子功能的单元测试与集成测试）
+    └── test_utils/    # 工具类测试（通用工具的功能验证）
