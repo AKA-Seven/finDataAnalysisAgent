@@ -7,17 +7,13 @@ NL2SQL模块（nl2sql）
 """
 
 # 导入模块内核心类（与模块内的核心文件名称对应，确保类名一致）
-from .nl2sql import (
-    DatabaseSchemaExplorer,
-    LLMNL2CodeClient,
-    NL2PythonDFMCP
+from .sql_generator import (
+    SQLGenerator
 )
 
 # 定义公共API（外部导入时，仅暴露以下核心对象，隐藏内部辅助逻辑）
 __all__ = [
-    "DatabaseSchemaExplorer",  # 数据库Schema提取器（仅提取表结构，无数据操作）
-    "LLMNL2CodeClient",        # 大模型代码生成客户端（自然语言转Python DF代码）
-    "NL2PythonDFMCP"           # 核心入口类（整合Schema提取+代码生成，一键调用）
+    "SQLGenerator"           # 核心入口类（整合Schema提取+代码生成，一键调用）
 ]
 
 # 模块版本信息（便于后续迭代管理、问题排查）
