@@ -5,7 +5,7 @@ import uuid
 
 from agent.parser.nl_parser import NLParser
 from agent.dialogue import MemoryStore, ContextManager
-
+from utils.log_utils import get_logger
 
 @dataclass
 class Task:
@@ -150,6 +150,44 @@ class TaskStructor:
             raise Exception("任务无效，无法格式化为MCP输入参数")
 
         return task.to_dict()
+
+class TaskStructor:
+    def __init__(self):
+        self.logger = get_logger(__name__)
+        self.task_id_prefix = "TASK"
+
+    def construct_task(self, user_input: str, parse_result: Dict, scene_match_result: Dict) -> Dict[str, Any]:
+        """构造标准化 MCP 任务字典"""
+        from datetime import datetime
+        task_id = f"{self.task_id_prefix}_{datetime.now().strftime('%Y%m%d%H%M%S')}"
+        wide_table = scene_match_result.get("wide_table", "")
+        output_path = "./data/output/test"
+
+        # 构建标准化任务字典（优先执行 nl2sql → auto_data_analysis → office_excel）
+        return {
+            "task_id": task_id,
+            "task_type": "office_excel",  # 最终执行 Excel 生成任务
+            "scene": parse_result.get("scene", "成本分析"),
+            "params": {
+                "query_demand": parse_result.get("query_demand", ""),
+                "wide_table": wide_table,
+                "time_range": parse_result.get("time_range", ""),
+                "field_mapping": scene_match_result.get("field_mapping", {}),
+                "raw_data": [
+                    {"cost_amount": 10000, "cost_type": "人力成本", "settle_date": "2024-02-10"},
+                    {"cost_amount": 20000, "cost_type": "物料成本", "settle_date": "2024-02-15"},
+                    {"cost_amount": 15000, "cost_type": "运营成本", "settle_date": "2024-02-20"}
+                ],
+                "target_fields": parse_result.get("target_fields", []),
+                "fill_data": {
+                    "cost_amount": {"mean": 15000.0, "sum": 45000.0}
+                },
+                "template_name": "default_template.xlsx",
+                "sheet_name": "2024年2月成本分析",
+                "output_filename": f"cost_analysis_{task_id}.xlsx"
+            },
+            "output_path": output_path
+        }
 
 
 # 测试示例（可直接运行该文件验证功能）

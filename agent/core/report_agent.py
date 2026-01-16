@@ -7,7 +7,7 @@ from datetime import datetime
 from agent.core.base_agent import BaseAgent
 from agent.dialogue import MemoryStore, ContextManager
 from agent.parser import NLParser, TaskStructor, ScenarioMatcher
-from agent.parser import Task
+from utils.exception_utils import TaskExecuteException
 
 class ReportAgent(BaseAgent):
     """
@@ -215,3 +215,42 @@ class ReportAgent(BaseAgent):
             return None
 
         return self.generate_financial_report(target_result, format)
+
+    def process_task(self, user_input: str) -> Dict[str, Any]:
+        """
+        核心业务处理方法：接收用户输入，完成从解析到结果整合的全链路
+        :param user_input: 用户自然语言输入
+        :return: 标准化任务结果字典
+        """
+        if not user_input:
+            raise TaskExecuteException("用户输入不能为空")
+
+        try:
+            # 步骤1：NL 解析（提取业务场景、需求、参数）
+            parse_result = self.nl_parser.parse(user_input)
+            if not parse_result or parse_result.get("status") != "success":
+                raise TaskExecuteException(f"自然语言解析失败：{parse_result.get('error_msg', '未知错误')}")
+
+            # 步骤2：场景匹配（获取宽表、字段映射、处理规则）
+            scene = parse_result.get("scene", self.default_scene)
+            scene_match_result = self.scenario_matcher.match(scene)
+            if not scene_match_result:
+                raise TaskExecuteException(f"场景 {scene} 未找到对应的宽表配置")
+
+            # 步骤3：结构化任务生成（转为 MCP 可执行的任务格式）
+            task_dict = self.task_structor.construct_task(
+                user_input=user_input,
+                parse_result=parse_result,
+                scene_match_result=scene_match_result
+            )
+
+            # 步骤4：任务分发（调用 MCP 模块执行）
+            mcp_result = self.task_dispatcher.dispatch(task_dict)
+
+            # 步骤5：结果整合（生成最终交付物）
+            assembled_result = self.result_assembler.assemble_single_result(mcp_result)
+
+            return assembled_result
+
+        except Exception as e:
+            raise TaskExecuteException(str(e)) from e

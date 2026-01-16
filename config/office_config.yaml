@@ -1,0 +1,27 @@
+# Office解析通用配置
+general:
+  supported_excel_formats: ["xlsx", "xls"]
+  supported_word_formats: ["docx", "doc"]
+  enable_template_cache: true  # 是否启用模板缓存
+  default_encoding: "utf-8"
+
+# Excel配置
+excel:
+  template_dir: "./data/templates/excel"  # Excel模板目录（覆盖全局配置可选）
+  fill_empty_value: ""  # 空值填充默认内容
+  enable_macro: false  # 是否启用宏
+  data_only: true  # 是否仅读取数据（忽略公式）
+  default_sheet: "Sheet1"  # 默认工作表名
+
+# Word配置
+word:
+  template_dir: "./data/templates/word"  # Word模板目录
+  enable_table_extract: true  # 是否启用表格提取
+  enable_text_extract: true  # 是否启用文本提取
+  default_paragraph_style: "Normal"  # 默认段落样式
+
+# 输出配置
+output:
+  auto_align: true  # 是否自动对齐单元格
+  auto_adjust_column: true  # 是否自动调整列宽
+  enable_format: true  # 是否启用格式美化

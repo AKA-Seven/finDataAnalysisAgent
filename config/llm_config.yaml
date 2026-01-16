@@ -1,0 +1,16 @@
+# LLM API 配置（支持多模型配置，当前默认DeepSeek）
+deepseek:
+  API_KEY: "sk-fe09e253e6f14adba6cf56eb1e1c106c"
+  BASE_URL: "https://api.deepseek.com"
+  MODEL: "deepseek-chat"
+  ENDPOINT: "/v1/chat/completions"
+  timeout: 30  # API请求超时时间（秒）
+  max_tokens: 2048  # 最大生成token数
+  temperature: 0.7  # 生成温度（0-1，越低越严谨）
+
+# 预留其他LLM配置（便于后续切换）
+# openai:
+#   API_KEY: "your-openai-key"
+#   BASE_URL: "https://api.openai.com"
+#   MODEL: "gpt-3.5-turbo"
+#   ENDPOINT: "/v1/chat/completions"
