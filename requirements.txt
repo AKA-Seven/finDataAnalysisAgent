@@ -1,0 +1,7 @@
+pymysql>=1.1.0                  # MySQL数据库连接
+DBUtils>=1.4                    # 数据库连接池（PooledDB）
+requests>=2.31.0                # DeepSeek API调用
+pandas>=2.2.0                   # 数据处理与表格转换（file_utils中使用）
+python-docx>=1.1.0              # 生成/补全Word报告（tools/word_generator）
+openpyxl>=3.1.0                 # 生成/读取/补全Excel表格（tools/excel_handler）
+restrictedpython>=7.0           # 可选：安全执行Python代码（tools/python_executor推荐使用，避免exec安全风险）

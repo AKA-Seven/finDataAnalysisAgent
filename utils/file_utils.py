@@ -1,105 +1,53 @@
+# utils/file_utils.py
 """
-文件工具：提供路径处理、文件读写、目录创建、格式验证等通用能力
+文件工具模块（路径、输出管理、表格数据辅助）
+主要功能：
+- 统一输出路径管理（自动创建outputs目录）
+- DataFrame 或 list[list] 转表格数据格式（供Word/Excel工具使用）
+  - pandas DataFrame：自动添加表头，None/NaN 转为 ""
+  - list[list]：直接转换，None 转为 ""（保持与pandas一致）
+- 简单文件读写辅助
+后续扩展：日志统一管理、模板路径管理、图片插入辅助等
 """
-import os
-import shutil
-from typing import List, Optional
 
-def get_abs_path(relative_path: str) -> str:
-    """
-    相对路径转绝对路径（兼容不同运行环境）
-    :param relative_path: 相对路径
-    :return: 绝对路径
-    """
-    return os.path.abspath(relative_path)
+from pathlib import Path
+from typing import Union, List, Any
+import pandas as pd
+from config import config
 
-def ensure_dir(dir_path: str) -> None:
+def get_output_path(filename: str) -> Path:
     """
-    确保目录存在，不存在则创建
-    :param dir_path: 目录路径
+    获取标准化输出路径（在 outputs/ 目录下）
+    自动创建必要的子目录
     """
-    if not os.path.exists(dir_path):
-        os.makedirs(dir_path, exist_ok=True)
+    path = config.OUTPUT_DIR / filename
+    path.parent.mkdir(parents=True, exist_ok=True)
+    return path.resolve()
 
-def read_file(file_path: str, encoding: str = "utf-8") -> str:
+def df_to_table_data(df: Union[pd.DataFrame, List[List[Any]]]) -> List[List[str]]:
     """
-    读取文本文件内容
-    :param file_path: 文件路径
-    :param encoding: 文件编码
-    :return: 文件内容
+    将 pandas DataFrame 或 list[list] 转换为通用表格数据
+    - pandas：自动添加表头，缺失值（None/NaN）转为 ""
+    - list[list]：直接字符串化，None 转为 ""（与pandas行为一致）
+    - 返回 list[list[str]]，每行是一个list
+    供 Word/Excel 工具直接插入表格使用
     """
-    if not os.path.exists(file_path):
-        raise FileNotFoundError(f"文件不存在：{file_path}")
+    if isinstance(df, pd.DataFrame):
+        # 表头 + 数据
+        headers = [str(col) for col in df.columns]
+        rows = df.fillna("").astype(str).values.tolist()
+        return [headers] + rows
+    else:
+        # list[list]：处理 None 为 ""，其他 str()
+        return [[str(cell) if cell is not None else "" for cell in row] for row in df]
 
-    with open(file_path, "r", encoding=encoding) as f:
-        return f.read()
+def save_text_to_file(content: str, filename: str) -> Path:
+    """简单文本保存辅助（调试用）"""
+    path = get_output_path(filename)
+    path.write_text(content, encoding="utf-8")
+    return path
 
-def write_file(file_path: str, content: str, encoding: str = "utf-8", overwrite: bool = True) -> None:
-    """
-    写入文本文件内容
-    :param file_path: 文件路径
-    :param content: 写入内容
-    :param encoding: 文件编码
-    :param overwrite: 是否覆盖已有文件（False则追加）
-    """
-    # 确保目录存在
-    ensure_dir(os.path.dirname(file_path))
-
-    mode = "w" if overwrite else "a"
-    with open(file_path, mode, encoding=encoding) as f:
-        f.write(content)
-
-def delete_file(file_path: str) -> bool:
-    """
-    删除文件（兼容不存在的文件，不抛出异常）
-    :param file_path: 文件路径
-    :return: 是否删除成功
-    """
-    try:
-        if os.path.exists(file_path):
-            os.remove(file_path)
-            return True
-        return False
-    except Exception:
-        return False
-
-def list_dir_files(dir_path: str, suffix: Optional[str] = None) -> List[str]:
-    """
-    列出目录下所有文件（可选过滤后缀）
-    :param dir_path: 目录路径
-    :param suffix: 文件后缀（如".xlsx"）
-    :return: 文件路径列表
-    """
-    if not os.path.isdir(dir_path):
-        raise NotADirectoryError(f"不是有效目录：{dir_path}")
-
-    file_list = []
-    for root, _, files in os.walk(dir_path):
-        for file in files:
-            if suffix and not file.endswith(suffix):
-                continue
-            file_list.append(os.path.join(root, file))
-
-    return file_list
-
-def validate_file_format(file_path: str, supported_formats: List[str]) -> bool:
-    """
-    验证文件格式是否支持
-    :param file_path: 文件路径
-    :param supported_formats: 支持的格式列表（如["xlsx", "csv"]）
-    :return: 是否支持
-    """
-    file_suffix = os.path.splitext(file_path)[1].lstrip(".").lower()
-    return file_suffix in [fmt.lower() for fmt in supported_formats]
-
-def copy_file(src_path: str, dst_path: str) -> None:
-    """
-    复制文件
-    :param src_path: 源文件路径
-    :param dst_path: 目标文件路径
-    """
-    if not os.path.exists(src_path):
-        raise FileNotFoundError(f"源文件不存在：{src_path}")
-
-    ensure_dir(os.path.dirname(dst_path))
-    shutil.copy2(src_path, dst_path)
+# 后续可扩展：
+# - 统一的logging setup（logging.basicConfig + get_logger）
+# - 模板文件路径管理（e.g., get_template_path("report_template.docx")）
+# - 图片/附件处理辅助
